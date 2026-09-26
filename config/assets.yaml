@@ -1,0 +1,14 @@
+assets:
+  price_overview:
+    kind: information
+    description: Tổng quan cách tính báo giá
+  color_lamos_basic:
+    kind: color_catalog
+    description: Bảng màu cơ bản
+  sample_inox_glass:
+    kind: material_sample
+    description: Mẫu tủ inox cánh kính
+  sample_picomat_acrylic:
+    kind: material_sample
+    description: Mẫu nhựa Picomat cánh Acrylic
+

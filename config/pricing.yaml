@@ -1,0 +1,25 @@
+currency: VND
+materials:
+  inox_glass:
+    name: Inox cánh kính
+    prices:
+      lower_cabinet: 4200000
+      upper_cabinet: 4200000
+      countertop: 1200000
+      backsplash: 1300000
+      led: 300000
+  picomat_acrylic:
+    name: Nhựa Picomat cánh Acrylic
+    prices:
+      lower_cabinet: 3300000
+      upper_cabinet: 3300000
+      countertop: 1200000
+      backsplash: 1300000
+      led: 300000
+accessory_packages:
+  basic: 0
+  standard: 2500000
+appliances:
+  hood: 3500000
+  hob: 5000000
+
