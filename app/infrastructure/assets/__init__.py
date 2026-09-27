@@ -1,1 +1,0 @@
-"""Asset matching adapters."""

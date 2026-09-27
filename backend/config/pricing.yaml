@@ -1,0 +1,50 @@
+currency: VND
+
+# Hạng mục báo giá, theo thứ tự hiển thị.
+# length_slot: slot chiều dài riêng; nếu khách chưa nói thì dùng kitchen_length_m.
+# toggle_slot: slot boolean cho phép khách bỏ hạng mục (mặc định là có).
+line_items:
+  lower_cabinet:
+    name: Tủ dưới
+    length_slot: lower_cabinet_length_m
+  upper_cabinet:
+    name: Tủ trên
+    length_slot: upper_cabinet_length_m
+  countertop:
+    name: Đá mặt bếp
+    length_slot: countertop_length_m
+    toggle_slot: include_countertop
+  backsplash:
+    name: Đá hoặc tấm ốp bếp
+    length_slot: backsplash_length_m
+    toggle_slot: include_backsplash
+  led:
+    name: LED, nguồn và cảm biến
+    length_slot: led_length_m
+    toggle_slot: include_led
+
+materials:
+  inox_glass:
+    name: Inox cánh kính
+    prices:
+      lower_cabinet: 4200000
+      upper_cabinet: 4200000
+      countertop: 1200000
+      backsplash: 1300000
+      led: 300000
+  picomat_acrylic:
+    name: Nhựa Picomat cánh Acrylic
+    prices:
+      lower_cabinet: 3300000
+      upper_cabinet: 3300000
+      countertop: 1200000
+      backsplash: 1300000
+      led: 300000
+
+accessory_packages:
+  basic: 0
+  standard: 2500000
+
+appliances:
+  hood: 3500000
+  hob: 5000000

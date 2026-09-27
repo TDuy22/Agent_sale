@@ -1,166 +1,135 @@
 # Interior Quotation Chatbot
 
-Demo local cho chatbot tư vấn và báo giá tủ bếp theo finite-state workflow. Ứng dụng hỗ
-trợ Gemini, OpenAI structured output và rule-based extractor chạy hoàn toàn local.
-
-## Kiến trúc
+Chatbot hỗ trợ sale nội thất (tủ bếp). Bot thu thập thông tin khách theo kịch bản, gửi ảnh
+mẫu phù hợp và xuất báo giá tạm tính.
 
 ```text
-HTTP / CLI / Streamlit UI
-    -> ChatService
-        -> SlotExtractor (Gemini, OpenAI hoặc rule-based)
-        -> FlowEngine (đọc config/flow.yaml)
-        -> SlotService (normalize, validate, merge memory)
-        -> ImageAssetSkill -> KeywordAssetMatcher -> YAML metadata
-        -> QuotationService (Decimal/integer VND, không gọi LLM)
-        -> ConversationRepository
+Agent_sale/
+├── backend/    # Core: FastAPI + LLM slot extraction + flow engine + báo giá
+└── frontend/   # Tùy chọn: web demo React + TypeScript, chỉ gọi REST API của backend
 ```
 
-- `app/domain`: model và enum nghiệp vụ, không biết FastAPI hay Google Sheets.
-- `app/application`: orchestration, workflow, slot validation, quotation và ports.
-- `app/infrastructure`: YAML loaders, memory repository, extractor adapters.
-- `app/api`: request/response schema và route mỏng.
-- `config`: flow và pricing có thể thay độc lập.
-- `data_image/assets.yaml`: metadata ánh xạ hai ảnh demo theo intent/context.
-- `tests`: unit test cho workflow/extraction/pricing và integration test cho API.
+Frontend không chứa logic nghiệp vụ. Mọi thứ (kịch bản, memory, chọn ảnh, tính giá) nằm ở
+backend, nên có thể thay frontend bằng Zalo/Messenger hay app khác mà không sửa core.
 
-Memory nghiệp vụ nằm trong `ConversationState.slots`. Mỗi slot lưu raw value, giá trị
-chuẩn hóa, source message, confidence và thời điểm cập nhật. Message history không được
-dùng thay thế structured memory.
+## Luồng xử lý mỗi tin nhắn
 
-## Cài môi trường
+```text
+Tin nhắn ─► Phân tích (LLM / rule-based) ─► Cập nhật memory (slots)
+        ─► Đủ dữ liệu section hiện tại?
+             ├─ Đủ      ─► chuyển section tiếp theo ─► ... ─► tính báo giá
+             └─ Chưa đủ ─► hỏi lại thông tin thiếu
+                            └─ quá max_attempts ─► dùng defaults hoặc chuyển nhân viên
+```
+
+LLM **chỉ** trích xuất slot và intent. Việc chuyển section, chọn ảnh và tính giá đều là
+code xác định, cấu hình bằng YAML.
+
+## Backend
 
 Yêu cầu Python 3.12.
 
 ```powershell
+cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
-Copy-Item .env.example .env
+Copy-Item .env.example .env      # điền GEMINI_API_KEY hoặc OPENAI_API_KEY nếu có
+uvicorn app.main:app --reload    # http://localhost:8000/docs
 ```
 
-Linux/macOS dùng `source .venv/bin/activate` và `cp .env.example .env`.
-
-## Chạy API
-
-```powershell
-uvicorn app.main:app --reload
-```
-
-Các endpoint:
-
-- `GET /health`
-- `POST /api/v1/sessions`
-- `GET /api/v1/sessions/{session_id}`
-- `POST /api/v1/chat`
-
-Ví dụ:
-
-```json
-{
-  "message": "Nhà anh xây mới, muốn làm tủ inox cánh kính khoảng 4m"
-}
-```
-
-Nếu bỏ `session_id`, chat endpoint tự tạo session. Những lượt sau nên gửi lại ID nhận
-được để tiếp tục đúng memory.
-
-## Chạy CLI
-
-```powershell
-python -m app.cli
-```
-
-CLI hỗ trợ `/state`, `/reset` và `/quit`.
-
-## Chạy Local Chat UI
-
-```powershell
-streamlit run app/ui.py
-```
-
-UI hiển thị hội thoại, section hiện tại, structured slots, ảnh được chọn từ metadata và
-bảng chi tiết báo giá. Ảnh được đọc local từ `data_image/`; LLM không nhận đường dẫn và
-không trực tiếp chọn file.
-
-## Test và lint
+Test và lint:
 
 ```powershell
 python -m pytest
-ruff check .
-ruff format --check .
+ruff check . ; ruff format --check .
 ```
 
-## Thay đổi flow
+### Cấu trúc
 
-Sửa `config/flow.yaml`; `FlowEngine` duyệt danh sách section theo thứ tự và không chứa
-chuỗi `if/else` theo từng kịch bản. Mỗi section khai báo `required_slots`,
-`optional_slots`, `max_attempts`, `failure_policy`, `suggested_assets` và tùy chọn
-`defaults`.
-
-Khi thêm required slot mới:
-
-1. Thêm slot vào YAML.
-2. Bổ sung normalize/validation tương ứng trong `SlotService`.
-3. Cho extractor trả slot đó.
-4. Thêm nhãn câu hỏi trong `ResponseService` và test luồng.
-
-`failed_attempt_count` chỉ tăng khi người dùng không cung cấp slot hợp lệ đang được hỏi;
-`turn_count` vẫn ghi tổng số lượt dừng tại section.
-
-## Thêm vật liệu và đơn giá
-
-Thêm material code trong `config/pricing.yaml`, gồm `name` và giá integer VND cho các
-code line item. Sau đó bổ sung alias nhận diện trong rule-based extractor hoặc để LLM
-extractor trả đúng code. Request không đọc Google Sheets; YAML được load một lần khi tạo
-service.
-
-Nếu chỉ có `kitchen_length_m`, MVP dùng chiều dài này cho tủ dưới, tủ trên, mặt đá, ốp
-bếp và LED. Quote luôn ghi rõ giả định đó. Chiều dài riêng, nếu có, được ưu tiên.
-
-## Thay memory repository
-
-Tạo adapter mới implement `ConversationRepository` trong `app/application/ports.py`
-(ví dụ Redis/PostgreSQL), rồi thay adapter tại `app/container.py`. Domain và FlowEngine
-không cần sửa. Adapter production cần bổ sung atomic update/concurrency control.
-
-## Cấu hình LLM extractor
-
-Trong `.env`:
-
-```dotenv
-SLOT_EXTRACTOR=gemini
-GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-3.5-flash-lite
-
-OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-5.4-mini
+```text
+backend/
+├── app/
+│   ├── api/             # routes.py, schemas.py — lớp HTTP mỏng
+│   ├── application/     # ChatService, FlowEngine, SlotService, QuotationService,
+│   │                    # ImageAssetSkill, ResponseService, ports (interfaces)
+│   ├── domain/          # model và enum nghiệp vụ thuần
+│   ├── infrastructure/  # extractors (gemini/openai/rule_based/fallback), YAML repos,
+│   │                    # in-memory session store, keyword asset matcher
+│   ├── prompts/         # system prompt cho LLM extractor
+│   ├── container.py     # nối dependency
+│   ├── settings.py
+│   └── main.py
+├── config/
+│   ├── flow.yaml        # kịch bản: lời chào, nhãn câu hỏi, các section
+│   └── pricing.yaml     # hạng mục, vật liệu, đơn giá
+├── assets/
+│   ├── assets.yaml      # metadata ảnh (intent, keyword, câu giới thiệu)
+│   └── images/
+└── tests/
 ```
 
-`SLOT_EXTRACTOR` nhận `gemini`, `openai`, `rule_based` hoặc `auto`. Model name chỉ đến
-từ biến môi trường, không hardcode trong adapter. Khi cấu hình provider được chọn chưa
-đủ key/model, ứng dụng dùng rule-based extractor.
+### API
 
-Các adapter dùng Pydantic structured output; LLM chỉ trích xuất slot, normalize và phân
-loại intent, không chuyển section, không chọn file và không tính giá. Material code lạ
-tiếp tục bị `SlotService` từ chối. Xem tài liệu structured output chính thức của
-[Gemini](https://ai.google.dev/gemini-api/docs/structured-output) và
-[OpenAI](https://developers.openai.com/api/docs/guides/structured-outputs).
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/health` | Trạng thái và extractor đang dùng |
+| POST | `/api/v1/sessions` | Tạo phiên, trả lời chào trong `message_history` |
+| GET | `/api/v1/sessions/{id}` | Xem toàn bộ state của phiên |
+| POST | `/api/v1/chat` | `{session_id?, message}` → reply, slots, quote, assets |
+| GET | `/api/v1/assets/{id}/image` | File ảnh của asset |
 
-## Image Asset Skill
+`assets[].url` trong response là đường dẫn tương đối so với API root.
 
-Mỗi asset trong `data_image/assets.yaml` có `id`, `file`, `description`, `keywords`,
-`intents` và `materials`. `ImageAssetSkill` tạo query từ conversation state; matcher xác
-định asset theo suggestion của section, intent và keyword. Để thêm ảnh, chỉ cần đặt file
-local và thêm một record metadata, không cần sửa flow engine.
+### Chọn LLM
+
+`SLOT_EXTRACTOR` trong `backend/.env`: `auto` | `gemini` | `openai` | `rule_based`.
+
+- `auto` dùng OpenAI nếu có key + model, sau đó Gemini, cuối cùng là rule-based.
+- Provider thiếu key/model sẽ bị bỏ qua; nếu provider lỗi khi đang chạy (timeout, quota…),
+  lượt đó tự dùng rule-based extractor.
+- Danh sách mã vật liệu trong prompt được sinh từ `pricing.yaml`.
+
+### Tùy biến không cần sửa code
+
+- **Kịch bản** — `config/flow.yaml`. Mỗi section có `required_slots`, `optional_slots`,
+  `max_attempts`, `failure_policy` (`needs_human` hoặc `use_defaults` + `defaults`),
+  `suggested_assets`. Section có `kind: quote` là bước tính báo giá.
+  `use_defaults` chỉ áp dụng sau khi khách trả lời hụt `max_attempts` lần.
+- **Bảng giá** — `config/pricing.yaml`. `line_items` khai báo tên hạng mục, slot chiều dài
+  riêng (`length_slot`) và slot cho phép bỏ hạng mục (`toggle_slot`). Hạng mục thiếu
+  chiều dài riêng dùng `kitchen_length_m` và được ghi vào giả định của báo giá.
+- **Ảnh** — thêm file vào `assets/images/` và một record trong `assets/assets.yaml`.
+
+Slot mới cần thêm normalize/validate trong `SlotService` và cho extractor nhận diện.
+
+## Frontend (demo, tùy chọn)
+
+Yêu cầu Node.js 20+. Chạy backend trước, sau đó:
+
+```powershell
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+```
+
+Vite proxy `/api` và `/health` sang `http://localhost:8000`, nên không cần cấu hình CORS
+khi dev. Nếu frontend được host riêng, đặt `VITE_API_URL=https://backend-host` khi build và
+thêm origin đó vào `CORS_ORIGINS` của backend.
+
+```text
+frontend/src/
+├── api.ts            # client REST có kiểu
+├── types.ts          # kiểu TypeScript khớp với backend/app/api/schemas.py
+├── App.tsx           # khung chat + quản lý phiên
+└── components/       # MessageBubble, QuoteCard, StatePanel
+```
 
 ## Chưa triển khai
 
-- Đồng bộ Google Sheets/OAuth; `scripts/import_pricing_sheet.py` chỉ là skeleton.
-- Database/Redis persistence và locking đa process.
-- UI production, auth production, Messenger/Zalo.
-- OCR/bản vẽ, RAG/vector database.
-- Sinh PDF/ảnh và upload asset thật.
-- Admin UI, audit trail và quan sát production nâng cao.
+- Lưu phiên bền vững (Redis/PostgreSQL) và locking đa process; hiện session nằm trong RAM.
+- Đồng bộ bảng giá từ Google Sheets.
+- Truyền ngữ cảnh câu hỏi đang hỏi cho extractor (ví dụ khách chỉ trả lời "4").
+- Auth, Messenger/Zalo, sinh PDF báo giá.
 
-Pricing trong MVP là dữ liệu mẫu, chưa phải cam kết thương mại cuối cùng.
+Pricing trong repo là dữ liệu mẫu, chưa phải cam kết thương mại.

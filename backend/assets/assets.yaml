@@ -1,0 +1,33 @@
+# `file` tính tương đối so với thư mục chứa file này.
+# `intro` là câu bot nói khi gửi ảnh.
+assets:
+  - id: kitchen_sample_combined
+    file: images/kitchen_samples.jpg
+    kind: material_sample
+    description: >-
+      Ảnh tổng hợp mẫu tủ bếp inox cánh kính, tủ có bàn bar, tủ kịch trần,
+      tủ trên dưới cơ bản và cấu tạo thùng inox 304.
+    intro: Em gửi anh/chị ảnh mẫu tủ bếp thực tế để tham khảo.
+    keywords: [mẫu tủ, mẫu bếp, hình thực tế, inox, kính, thiết kế]
+    intents: [show_sample]
+    materials: [inox_glass]
+
+  - id: color_sample_combined
+    file: images/kitchen_samples.jpg
+    kind: color_catalog
+    description: Bảng màu cánh kính LAMOS nằm trong ảnh mẫu tổng hợp.
+    intro: Em gửi anh/chị bảng màu kính để tham khảo.
+    keywords: [màu kính, bảng màu, màu cánh kính, LAMOS]
+    intents: [show_color]
+    materials: [inox_glass]
+
+  - id: accessory_sample_combined
+    file: images/accessories.jpg
+    kind: accessory_catalog
+    description: >-
+      Ảnh tổng hợp phụ kiện tủ bếp inox 304 gồm giá xoong nồi, giá bát,
+      chậu vòi, giá gia vị, giá dao thớt và thùng gạo.
+    intro: Em gửi anh/chị ảnh các phụ kiện tủ bếp để tham khảo.
+    keywords: [phụ kiện, inox 304, giá xoong nồi, giá bát, chậu vòi]
+    intents: [show_accessories]
+    materials: [inox_glass]
