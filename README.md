@@ -1,17 +1,17 @@
 # Interior Quotation Chatbot
 
-Base project cho chatbot tư vấn và báo giá tủ bếp theo finite-state workflow. MVP chạy
-hoàn toàn bằng rule-based slot extractor, không cần API key, đồng thời giữ một adapter
-OpenAI structured output tùy chọn.
+Demo local cho chatbot tư vấn và báo giá tủ bếp theo finite-state workflow. Ứng dụng hỗ
+trợ Gemini, OpenAI structured output và rule-based extractor chạy hoàn toàn local.
 
 ## Kiến trúc
 
 ```text
-HTTP / CLI
+HTTP / CLI / Streamlit UI
     -> ChatService
-        -> SlotExtractor (rule-based hoặc OpenAI)
+        -> SlotExtractor (Gemini, OpenAI hoặc rule-based)
         -> FlowEngine (đọc config/flow.yaml)
         -> SlotService (normalize, validate, merge memory)
+        -> ImageAssetSkill -> KeywordAssetMatcher -> YAML metadata
         -> QuotationService (Decimal/integer VND, không gọi LLM)
         -> ConversationRepository
 ```
@@ -20,7 +20,8 @@ HTTP / CLI
 - `app/application`: orchestration, workflow, slot validation, quotation và ports.
 - `app/infrastructure`: YAML loaders, memory repository, extractor adapters.
 - `app/api`: request/response schema và route mỏng.
-- `config`: flow, pricing và asset metadata có thể thay độc lập.
+- `config`: flow và pricing có thể thay độc lập.
+- `data_image/assets.yaml`: metadata ánh xạ hai ảnh demo theo intent/context.
 - `tests`: unit test cho workflow/extraction/pricing và integration test cho API.
 
 Memory nghiệp vụ nằm trong `ConversationState.slots`. Mỗi slot lưu raw value, giá trị
@@ -72,6 +73,16 @@ python -m app.cli
 
 CLI hỗ trợ `/state`, `/reset` và `/quit`.
 
+## Chạy Local Chat UI
+
+```powershell
+streamlit run app/ui.py
+```
+
+UI hiển thị hội thoại, section hiện tại, structured slots, ảnh được chọn từ metadata và
+bảng chi tiết báo giá. Ảnh được đọc local từ `data_image/`; LLM không nhận đường dẫn và
+không trực tiếp chọn file.
+
 ## Test và lint
 
 ```powershell
@@ -84,7 +95,8 @@ ruff format --check .
 
 Sửa `config/flow.yaml`; `FlowEngine` duyệt danh sách section theo thứ tự và không chứa
 chuỗi `if/else` theo từng kịch bản. Mỗi section khai báo `required_slots`,
-`optional_slots`, `max_attempts`, `failure_policy` và tùy chọn `defaults`.
+`optional_slots`, `max_attempts`, `failure_policy`, `suggested_assets` và tùy chọn
+`defaults`.
 
 Khi thêm required slot mới:
 
@@ -99,7 +111,7 @@ Khi thêm required slot mới:
 ## Thêm vật liệu và đơn giá
 
 Thêm material code trong `config/pricing.yaml`, gồm `name` và giá integer VND cho các
-code line item. Sau đó bổ sung alias nhận diện trong rule-based extractor hoặc để OpenAI
+code line item. Sau đó bổ sung alias nhận diện trong rule-based extractor hoặc để LLM
 extractor trả đúng code. Request không đọc Google Sheets; YAML được load một lần khi tạo
 service.
 
@@ -112,26 +124,41 @@ Tạo adapter mới implement `ConversationRepository` trong `app/application/po
 (ví dụ Redis/PostgreSQL), rồi thay adapter tại `app/container.py`. Domain và FlowEngine
 không cần sửa. Adapter production cần bổ sung atomic update/concurrency control.
 
-## Bật OpenAI extractor
+## Cấu hình LLM extractor
 
 Trong `.env`:
 
 ```dotenv
-SLOT_EXTRACTOR=openai
+SLOT_EXTRACTOR=gemini
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-3.5-flash-lite
+
 OPENAI_API_KEY=...
-OPENAI_MODEL=...
+OPENAI_MODEL=gpt-5.4-mini
 ```
 
-Model name không được hardcode. Adapter dùng Pydantic structured output qua Responses
-API; LLM chỉ trích xuất slot, không chuyển section và không tính giá. Nếu thiếu key hoặc
-model, ứng dụng log cảnh báo rồi tự động dùng rule-based extractor. Cách gọi bám theo
-[tài liệu Structured Outputs chính thức của OpenAI](https://developers.openai.com/api/docs/guides/structured-outputs).
+`SLOT_EXTRACTOR` nhận `gemini`, `openai`, `rule_based` hoặc `auto`. Model name chỉ đến
+từ biến môi trường, không hardcode trong adapter. Khi cấu hình provider được chọn chưa
+đủ key/model, ứng dụng dùng rule-based extractor.
+
+Các adapter dùng Pydantic structured output; LLM chỉ trích xuất slot, normalize và phân
+loại intent, không chuyển section, không chọn file và không tính giá. Material code lạ
+tiếp tục bị `SlotService` từ chối. Xem tài liệu structured output chính thức của
+[Gemini](https://ai.google.dev/gemini-api/docs/structured-output) và
+[OpenAI](https://developers.openai.com/api/docs/guides/structured-outputs).
+
+## Image Asset Skill
+
+Mỗi asset trong `data_image/assets.yaml` có `id`, `file`, `description`, `keywords`,
+`intents` và `materials`. `ImageAssetSkill` tạo query từ conversation state; matcher xác
+định asset theo suggestion của section, intent và keyword. Để thêm ảnh, chỉ cần đặt file
+local và thêm một record metadata, không cần sửa flow engine.
 
 ## Chưa triển khai
 
 - Đồng bộ Google Sheets/OAuth; `scripts/import_pricing_sheet.py` chỉ là skeleton.
 - Database/Redis persistence và locking đa process.
-- Frontend, auth production, Messenger/Zalo.
+- UI production, auth production, Messenger/Zalo.
 - OCR/bản vẽ, RAG/vector database.
 - Sinh PDF/ảnh và upload asset thật.
 - Admin UI, audit trail và quan sát production nâng cao.

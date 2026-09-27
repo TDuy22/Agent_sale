@@ -18,3 +18,10 @@ class QuoteStatus(StrEnum):
     DRAFT = "DRAFT"
     READY = "READY"
     INCOMPLETE = "INCOMPLETE"
+
+
+class UserIntent(StrEnum):
+    SHOW_SAMPLE = "show_sample"
+    SHOW_COLOR = "show_color"
+    SHOW_ACCESSORIES = "show_accessories"
+    REQUEST_QUOTE = "request_quote"

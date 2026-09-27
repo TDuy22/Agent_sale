@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.domain.enums import ConversationStatus
+from app.domain.enums import ConversationStatus, UserIntent
 from app.domain.models.conversation import ConversationMessage, SectionAttempts, SlotValue
 from app.domain.models.quote import Quote
 
@@ -16,6 +16,7 @@ class SessionResponse(BaseModel):
     last_asked_fields: list[str]
     message_history: list[ConversationMessage]
     completed_sections: list[str]
+    last_intents: list[UserIntent]
     quote_version: int
     quote: Quote | None
     created_at: datetime

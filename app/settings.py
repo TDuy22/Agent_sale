@@ -6,12 +6,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Runtime settings loaded from environment variables and an optional .env file."""
 
-    slot_extractor: str = "rule_based"
+    slot_extractor: str = "auto"
     openai_api_key: str | None = None
     openai_model: str | None = None
+    gemini_api_key: str | None = None
+    gemini_model: str | None = None
     flow_config_path: str = "config/flow.yaml"
     pricing_config_path: str = "config/pricing.yaml"
-    asset_config_path: str = "config/assets.yaml"
+    asset_config_path: str = "data_image/assets.yaml"
     log_level: str = "INFO"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

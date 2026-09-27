@@ -10,11 +10,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115,<1",
+  "google-genai>=1.0,<2",
   "openai>=2.0,<3",
   "pydantic>=2.9,<3",
   "pydantic-settings>=2.5,<3",
   "python-dotenv>=1.0,<2",
   "pyyaml>=6.0,<7",
+  "streamlit>=1.40,<2",
   "uvicorn[standard]>=0.30,<1",
 ]
 
@@ -39,4 +41,3 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
-

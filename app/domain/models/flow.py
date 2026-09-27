@@ -13,6 +13,7 @@ class FlowSection(BaseModel):
     goal: str
     required_slots: list[str] = Field(default_factory=list)
     optional_slots: list[str] = Field(default_factory=list)
+    suggested_assets: list[str] = Field(default_factory=list)
     defaults: dict[str, Any] = Field(default_factory=dict)
     max_attempts: int = Field(default=3, ge=1)
     failure_policy: FailurePolicy = FailurePolicy.NEEDS_HUMAN

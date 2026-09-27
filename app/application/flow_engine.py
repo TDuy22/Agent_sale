@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+from app.application.ports import AssetSkill
 from app.application.quotation_service import QuotationService
 from app.application.response_service import ResponseService
 from app.application.slot_service import SlotService
@@ -28,11 +29,13 @@ class FlowEngine:
         slot_service: SlotService,
         quotation_service: QuotationService,
         response_service: ResponseService,
+        asset_skill: AssetSkill | None = None,
     ) -> None:
         self._flow = flow
         self._slots = slot_service
         self._quotes = quotation_service
         self._responses = response_service
+        self._asset_skill = asset_skill
 
     @property
     def first_section_id(self) -> str:
@@ -45,6 +48,8 @@ class FlowEngine:
         source_message: str,
     ) -> EngineResult:
         accepted, changed_any = self._slots.merge(state, extraction, source_message)
+        state.last_intents = extraction.intents
+        suggested_asset_ids: list[str] = []
         if changed_any and state.quote is not None:
             state.quote = None
             state.status = ConversationStatus.COLLECTING
@@ -66,9 +71,12 @@ class FlowEngine:
                     state.completed_sections.append(section.id)
                 state.last_asked_fields = []
                 state.last_asked_section = None
-                return EngineResult(
+                return self._result(
+                    state=state,
                     reply=self._responses.quote_ready(state.quote),
-                    asset_ids=self._responses.assets_for(state),
+                    source_message=source_message,
+                    extraction=extraction,
+                    suggested_asset_ids=suggested_asset_ids,
                 )
 
             if section.failure_policy == FailurePolicy.USE_DEFAULTS:
@@ -93,22 +101,67 @@ class FlowEngine:
                         missing = self._slots.missing_or_invalid(state, section.required_slots)
                     if missing:
                         state.status = ConversationStatus.NEEDS_HUMAN
-                        return EngineResult(
+                        return self._result(
+                            state=state,
                             reply=self._responses.needs_human(missing),
+                            source_message=source_message,
+                            extraction=extraction,
+                            suggested_asset_ids=suggested_asset_ids,
                             missing_slots=missing,
                         )
 
                 state.status = ConversationStatus.COLLECTING
                 state.last_asked_fields = missing
                 state.last_asked_section = section.id
-                return EngineResult(reply=self._responses.ask_for(missing), missing_slots=missing)
+                return self._result(
+                    state=state,
+                    reply=self._responses.ask_for(missing),
+                    source_message=source_message,
+                    extraction=extraction,
+                    suggested_asset_ids=suggested_asset_ids,
+                    missing_slots=missing,
+                )
 
             if section.id not in state.completed_sections:
                 state.completed_sections.append(section.id)
+                suggested_asset_ids.extend(section.suggested_assets)
             state.last_asked_fields = []
             state.last_asked_section = None
             current_index = self._flow.index_of(section.id)
             if current_index + 1 >= len(self._flow.sections):
                 state.status = ConversationStatus.COMPLETED
-                return EngineResult(reply="Phiên tư vấn đã hoàn tất.")
+                return self._result(
+                    state=state,
+                    reply="Phiên tư vấn đã hoàn tất.",
+                    source_message=source_message,
+                    extraction=extraction,
+                    suggested_asset_ids=suggested_asset_ids,
+                )
             state.current_section = self._flow.sections[current_index + 1].id
+
+    def _result(
+        self,
+        state: ConversationState,
+        reply: str,
+        source_message: str,
+        extraction: SlotExtractionResult,
+        suggested_asset_ids: list[str],
+        missing_slots: list[str] | None = None,
+    ) -> EngineResult:
+        asset_ids = (
+            self._asset_skill.select_assets(
+                state,
+                source_message,
+                extraction.intents,
+                suggested_asset_ids,
+            )
+            if self._asset_skill
+            else []
+        )
+        if asset_ids:
+            reply = self._responses.with_assets(reply, extraction.intents, asset_ids)
+        return EngineResult(
+            reply=reply,
+            missing_slots=missing_slots or [],
+            asset_ids=asset_ids,
+        )

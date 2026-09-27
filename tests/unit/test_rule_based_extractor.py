@@ -1,3 +1,4 @@
+from app.domain.enums import UserIntent
 from app.infrastructure.llm.rule_based_extractor import RuleBasedSlotExtractor
 
 
@@ -22,3 +23,15 @@ def test_recognizes_negative_options() -> None:
     assert values["include_countertop"] is False
     assert values["include_led"] is False
     assert values["include_backsplash"] is True
+
+
+def test_distinguishes_sample_and_color_intents() -> None:
+    sample = RuleBasedSlotExtractor().extract("Cho anh xem mẫu tủ bếp.")
+    color = RuleBasedSlotExtractor().extract("Cho anh xem màu kính.")
+
+    assert sample.intents == [UserIntent.SHOW_SAMPLE]
+    assert color.intents == [UserIntent.SHOW_COLOR]
+
+
+def test_extracts_color() -> None:
+    assert _as_dict("Anh chọn màu xám.")["color"] == "gray"

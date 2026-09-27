@@ -3,6 +3,7 @@ from typing import Any
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
+from app.domain.enums import UserIntent
 from app.domain.models.conversation import ExtractedSlot, SlotExtractionResult
 
 
@@ -16,6 +17,7 @@ class OpenAIExtraction(BaseModel):
     extracted_slots: list[OpenAIExtractedSlot]
     corrections: list[str]
     unresolved_references: list[str]
+    intents: list[UserIntent]
     confidence: float = Field(ge=0, le=1)
 
 
@@ -45,5 +47,6 @@ class OpenAISlotExtractor:
             extracted_slots=[ExtractedSlot(**item.model_dump()) for item in parsed.extracted_slots],
             corrections=parsed.corrections,
             unresolved_references=parsed.unresolved_references,
+            intents=parsed.intents,
             confidence=parsed.confidence,
         )

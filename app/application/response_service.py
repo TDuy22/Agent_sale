@@ -1,4 +1,4 @@
-from app.domain.models.conversation import ConversationState
+from app.domain.enums import UserIntent
 from app.domain.models.quote import Quote
 
 
@@ -14,6 +14,7 @@ class ResponseService:
         "countertop_length_m": "chiều dài đá mặt bếp",
         "backsplash_length_m": "chiều dài phần ốp bếp",
         "led_length_m": "chiều dài LED",
+        "color": "màu cánh tủ mong muốn",
     }
 
     def ask_for(self, missing_fields: list[str]) -> str:
@@ -37,11 +38,16 @@ class ResponseService:
             "Chi tiết hạng mục đã được trả trong trường quote."
         )
 
-    def assets_for(self, state: ConversationState) -> list[str]:
-        ids = ["price_overview", "color_lamos_basic"]
-        material = state.slots.get("material_code")
-        if material and material.normalized_value == "inox_glass":
-            ids.append("sample_inox_glass")
-        elif material and material.normalized_value == "picomat_acrylic":
-            ids.append("sample_picomat_acrylic")
-        return ids
+    def with_assets(
+        self,
+        reply: str,
+        intents: list[UserIntent],
+        asset_ids: list[str],
+    ) -> str:
+        if UserIntent.SHOW_COLOR in intents or "color_sample_combined" in asset_ids:
+            intro = "Em gửi anh/chị bảng màu kính để tham khảo."
+        elif UserIntent.SHOW_ACCESSORIES in intents or "accessory_sample_combined" in asset_ids:
+            intro = "Em gửi anh/chị ảnh các phụ kiện tủ bếp để tham khảo."
+        else:
+            intro = "Em gửi anh/chị ảnh mẫu tủ bếp thực tế để tham khảo."
+        return f"{intro} {reply}"

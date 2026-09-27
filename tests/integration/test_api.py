@@ -16,7 +16,7 @@ def test_api_works_without_openai_key(service: ChatService) -> None:
             "/api/v1/chat",
             json={
                 "session_id": session_id,
-                "message": "Nhà xây mới, inox cánh kính 3m.",
+                "message": "Nhà xây mới, inox cánh kính màu xám 3m.",
             },
         )
         fetched = client.get(f"/api/v1/sessions/{session_id}")

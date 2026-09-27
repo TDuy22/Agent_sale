@@ -12,6 +12,7 @@ sections:
     goal: Xác định vật liệu tủ bếp
     required_slots: [material_code]
     optional_slots: []
+    suggested_assets: [kitchen_sample_combined]
     max_attempts: 3
     failure_policy: needs_human
 
@@ -28,22 +29,14 @@ sections:
     max_attempts: 3
     failure_policy: needs_human
 
-  - id: options
-    title: Hạng mục bổ sung
-    goal: Xác nhận đá, kính, LED, phụ kiện và thiết bị
-    required_slots: []
-    optional_slots:
-      - include_countertop
-      - include_backsplash
-      - include_led
-      - accessory_package
-      - appliances
-    defaults:
-      include_countertop: true
-      include_backsplash: true
-      include_led: true
-    max_attempts: 2
-    failure_policy: use_defaults
+  - id: color
+    title: Màu sắc
+    goal: Xác định màu cánh tủ mong muốn
+    required_slots: [color]
+    optional_slots: []
+    suggested_assets: [color_sample_combined]
+    max_attempts: 3
+    failure_policy: needs_human
 
   - id: quotation
     title: Báo giá
@@ -52,4 +45,3 @@ sections:
     optional_slots: []
     max_attempts: 1
     failure_policy: needs_human
-

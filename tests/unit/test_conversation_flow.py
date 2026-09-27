@@ -7,7 +7,7 @@ from app.domain.enums import ConversationStatus
 def test_extracts_multiple_sections_from_one_message(service: ChatService) -> None:
     state = service.create_session()
 
-    result = service.chat("Nhà anh xây mới, làm inox cánh kính 4m.", state.session_id)
+    result = service.chat("Nhà anh xây mới, làm inox cánh kính màu xám 4m.", state.session_id)
 
     assert result.collected_slots["project_type"].normalized_value == "new_build"
     assert result.collected_slots["material_code"].normalized_value == "inox_glass"
@@ -29,9 +29,12 @@ def test_collects_dimension_across_turns_without_losing_memory(
     assert second.attempts["dimensions"].failed_attempt_count == 1
 
     third = service.chat("4m", state.session_id)
-    assert third.status == ConversationStatus.QUOTED.value
+    assert third.current_section == "color"
     assert third.collected_slots["project_type"].normalized_value == "new_build"
     assert third.attempts["dimensions"].failed_attempt_count == 1
+
+    quoted = service.chat("Màu xám.", state.session_id)
+    assert quoted.status == ConversationStatus.QUOTED.value
 
 
 def test_three_failed_dimension_answers_require_human(service: ChatService) -> None:
@@ -51,7 +54,7 @@ def test_correction_replaces_dimension_and_recalculates_quote(
     service: ChatService,
 ) -> None:
     state = service.create_session()
-    initial = service.chat("Nhà xây mới, làm inox cánh kính 4m.", state.session_id)
+    initial = service.chat("Nhà xây mới, làm inox cánh kính màu xám 4m.", state.session_id)
     assert initial.quote is not None
     assert initial.quote.version == 1
     assert initial.quote.subtotal == 44_800_000
@@ -83,18 +86,18 @@ def test_future_section_data_is_saved_and_used_later(service: ChatService) -> No
     assert early.collected_slots["material_code"].normalized_value == "inox_glass"
     assert early.collected_slots["kitchen_length_m"].normalized_value == Decimal("4")
 
-    result = service.chat("Nhà xây mới.", state.session_id)
+    result = service.chat("Nhà xây mới, màu xám.", state.session_id)
 
     assert result.quote is not None
     assert result.missing_slots == []
-    assert {"project_info", "material", "dimensions", "options"}.issubset(result.completed_sections)
+    assert {"project_info", "material", "dimensions", "color"}.issubset(result.completed_sections)
 
 
 def test_specific_length_overrides_kitchen_length(service: ChatService) -> None:
     state = service.create_session()
     service.chat("Muốn tủ trên chỉ 3m thôi.", state.session_id)
 
-    result = service.chat("Nhà xây mới, làm inox cánh kính, bếp dài 4m.", state.session_id)
+    result = service.chat("Nhà xây mới, làm inox cánh kính màu xám, bếp dài 4m.", state.session_id)
 
     assert result.quote is not None
     upper_line = next(line for line in result.quote.line_items if line.code == "upper_cabinet")

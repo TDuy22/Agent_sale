@@ -25,6 +25,7 @@ class SlotService:
         "project_type",
         "material_code",
         "location",
+        "color",
         "accessory_package",
         "appliances",
     }
