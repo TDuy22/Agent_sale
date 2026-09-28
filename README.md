@@ -127,7 +127,9 @@ frontend/src/
 
 ## Chưa triển khai
 
-- Lưu phiên bền vững (Redis/PostgreSQL) và locking đa process; hiện session nằm trong RAM.
+- Lưu phiên bền vững (SQLite/Redis/PostgreSQL). Hiện session nằm trong RAM của backend:
+  frontend nhớ `session_id` trong `localStorage` nên tải lại trang vẫn giữ lịch sử, nhưng
+  khởi động lại backend (kể cả `--reload` khi sửa code) thì mất.
 - Đồng bộ bảng giá từ Google Sheets.
 - Truyền ngữ cảnh câu hỏi đang hỏi cho extractor (ví dụ khách chỉ trả lời "4").
 - Auth, Messenger/Zalo, sinh PDF báo giá.

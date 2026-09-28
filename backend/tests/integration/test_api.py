@@ -43,6 +43,24 @@ def test_chat_can_create_session_when_id_is_omitted(client: TestClient) -> None:
     assert response.json()["session_id"]
 
 
+def test_session_history_can_be_restored_with_assets(client: TestClient) -> None:
+    session_id = client.post("/api/v1/sessions").json()["session_id"]
+    client.post(
+        "/api/v1/chat",
+        json={"session_id": session_id, "message": "Nhà xây mới, cho anh xem mẫu tủ bếp"},
+    )
+
+    restored = client.get(f"/api/v1/sessions/{session_id}").json()
+
+    assert [message["role"] for message in restored["message_history"]] == [
+        "assistant",
+        "user",
+        "assistant",
+    ]
+    assert restored["message_history"][-1]["assets"][0]["id"] == "kitchen_sample_combined"
+    assert restored["missing_slots"] == ["material_code"]
+
+
 def test_unknown_session_returns_404(client: TestClient) -> None:
     response = client.post("/api/v1/chat", json={"session_id": "missing", "message": "Xin chào"})
 

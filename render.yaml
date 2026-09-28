@@ -1,0 +1,29 @@
+# Render Blueprint: backend FastAPI (free web service).
+# Render dashboard -> New -> Blueprint -> chọn repo này.
+services:
+  - type: web
+    name: interior-quote-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.11
+      - key: SLOT_EXTRACTOR
+        value: auto
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.4-mini
+      # JSON list, ví dụ: ["https://interior-quote.vercel.app"]
+      - key: CORS_ORIGINS
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO

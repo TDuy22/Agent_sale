@@ -41,6 +41,7 @@ class SectionAttempts(BaseModel):
 class ConversationMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
+    asset_ids: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
 
 

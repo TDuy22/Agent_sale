@@ -43,6 +43,7 @@ export interface Asset {
 export interface ConversationMessage {
   role: "user" | "assistant";
   content: string;
+  assets: Asset[];
   created_at: string;
 }
 
@@ -52,6 +53,7 @@ export interface SessionResponse {
   current_section: string;
   completed_sections: string[];
   slots: Record<string, SlotValue>;
+  missing_slots: string[];
   message_history: ConversationMessage[];
   quote: Quote | null;
 }

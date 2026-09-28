@@ -67,7 +67,13 @@ class ChatService:
         state.message_history.append(ConversationMessage(role="user", content=message))
         extraction = self._extractor.extract(message)
         outcome = self._flow_engine.process(state, extraction, message)
-        state.message_history.append(ConversationMessage(role="assistant", content=outcome.reply))
+        state.message_history.append(
+            ConversationMessage(
+                role="assistant",
+                content=outcome.reply,
+                asset_ids=[asset.asset_id for asset in outcome.assets],
+            )
+        )
         state.updated_at = datetime.now(UTC)
         self._repository.save(state)
         return ChatResult(

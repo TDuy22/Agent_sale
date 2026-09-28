@@ -1,9 +1,10 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from app.domain.enums import ConversationStatus
-from app.domain.models.conversation import ConversationMessage, SectionAttempts, SlotValue
+from app.domain.models.conversation import SectionAttempts, SlotValue
 from app.domain.models.quote import Quote
 
 
@@ -31,14 +32,22 @@ class ChatResponse(BaseModel):
     assets: list[AssetOut]
 
 
+class MessageOut(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+    assets: list[AssetOut]
+    created_at: datetime
+
+
 class SessionResponse(BaseModel):
     session_id: str
     status: ConversationStatus
     current_section: str
     completed_sections: list[str]
     slots: dict[str, SlotValue]
+    missing_slots: list[str]
     attempts_by_section: dict[str, SectionAttempts]
-    message_history: list[ConversationMessage]
+    message_history: list[MessageOut]
     quote: Quote | None
     created_at: datetime
     updated_at: datetime
